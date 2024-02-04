@@ -39,13 +39,5 @@ namespace Repository.Bases
         public DateTimeOffset? DeleteTime { get; set; }
 
 
-
-        /// <summary>
-        /// 行版本标记
-        /// </summary>
-        [Timestamp]
-        public uint RowVersion { get; set; }
-
-
     }
 }
