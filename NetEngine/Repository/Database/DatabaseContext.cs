@@ -54,6 +54,7 @@ namespace Repository.Database
 
         public DbSet<TOrderDetail> TOrderDetail { get; set; }
 
+        public DbSet<TPartner> TPartner { get; set; }
 
         public DbSet<TProduct> TProduct { get; set; }
 
