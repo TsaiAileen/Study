@@ -42,6 +42,43 @@ namespace WebAPI.Controllers
             this.idHelper = idHelper;
         }
 
+        [HttpGet]
+        public DtoPageList<DtoStudent> GetStudentList(int pageNum, int pageSize)
+        {
+            DtoPageList<DtoStudent> retList = new();
+
+            int skip = (pageNum - 1) * pageSize;
+            var query = db.TStudent.AsQueryable();
+
+            retList.Total = query.Count();
+            retList.List = query.OrderBy(t => t.Id).Select(t => new DtoStudent
+
+            {
+                Id = t.Id,
+                Name = t.Name,
+                Age = t.Age,
+                Birthday = t.Birthday,
+                CreateTime = t.CreateTime
+
+            }).Skip(skip).Take(pageSize).ToList();
+
+            return retList;
+        }
+
+        [HttpGet]
+        public DtoStudent? GetStudent(long id)
+        {
+            var student = db.TStudent.Where(t => t.Id == id).Select(t => new DtoStudent
+            {
+                Id = t.Id,
+                Name = t.Name,
+                Age = t.Age,
+                Birthday = t.Birthday,
+                CreateTime = t.CreateTime
+            }).FirstOrDefault();
+
+            return student;
+        }
 
         [HttpPost]
         public long CreateStudent(DtoCreateStudent createStudent)
