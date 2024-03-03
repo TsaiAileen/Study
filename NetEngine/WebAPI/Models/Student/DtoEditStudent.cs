@@ -1,13 +1,12 @@
 namespace WebAPI.Models.Student
 {
-  public class DtoCreateStudent
+  public class DtoEditStudent
   {
 
     /// <summary>
     /// 姓名
     /// </summary>
     public string Name { get; set; }
-
 
 
     /// <summary>

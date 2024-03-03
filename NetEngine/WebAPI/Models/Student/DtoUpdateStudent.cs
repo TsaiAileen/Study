@@ -10,10 +10,7 @@ namespace WebAPI.Models.Student
     /// </summary>
     public string Name { get; set; }
 
-    /// <summary>
-    /// 年齡
-    /// </summary>
-    public int Age { get; set; }
+
 
     /// <summary>
     /// 生日

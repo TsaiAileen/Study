@@ -56,11 +56,18 @@ namespace WebAPI.Controllers
             {
                 Id = t.Id,
                 Name = t.Name,
-                Age = t.Age,
                 Birthday = t.Birthday,
                 CreateTime = t.CreateTime
 
             }).Skip(skip).Take(pageSize).ToList();
+
+            // Display all ages on the page list
+            var nowDate = DateTimeOffset.UtcNow.UtcDateTime; // UTC is the standard time = 0
+            foreach (var student in retList.List)
+            {
+                var birthday = student.Birthday.ToDateTime(TimeOnly.Parse("00:00"));
+                student.Age = (nowDate - birthday).Days / 365;
+            }
 
             return retList;
         }
@@ -72,12 +79,47 @@ namespace WebAPI.Controllers
             {
                 Id = t.Id,
                 Name = t.Name,
-                Age = t.Age,
                 Birthday = t.Birthday,
                 CreateTime = t.CreateTime
             }).FirstOrDefault();
 
+            // If student is not null, calculate the bday by using current day time
+            if (student != null)
+            {
+                var nowDate = DateTimeOffset.UtcNow.UtcDateTime;
+                var birthday = student.Birthday.ToDateTime(TimeOnly.Parse("00:00"));
+
+                student.Age = (nowDate - birthday).Days / 365;
+            }
+
+            // No need to save the generated bday to db as bday will be different every year
             return student;
+        }
+
+        [HttpPost]
+        public long EditStudent(long? id, DtoEditStudent editStudent)
+        {
+            TStudent student = new();
+            if (id != null)
+            {
+                // ID 找學生，若該學生不存在，一樣 new 一個新的學生
+                student = db.TStudent.Where(t => t.Id == id).FirstOrDefault() ?? new();
+            }
+
+            // 新的學生一樣添加以下資料
+            student.Name = editStudent.Name;
+            student.Birthday = editStudent.Birthday;
+
+            // 如果 ID 為 0，則用以下方法生成一個 ID
+            if (student.Id == 0)
+            {
+                student.Id = idHelper.GetId();
+                db.TStudent.Add(student);
+            }
+
+            db.SaveChanges();
+
+            return student.Id;
         }
 
         [HttpPost]
@@ -85,10 +127,8 @@ namespace WebAPI.Controllers
         {
             TStudent student = new();
             student.Id = idHelper.GetId();
-
             student.Name = createStudent.Name;
             student.Birthday = createStudent.Birthday;
-            student.Age = createStudent.Age;
 
             db.TStudent.Add(student);
             db.SaveChanges();
@@ -106,7 +146,6 @@ namespace WebAPI.Controllers
             {
                 student.Name = updateStudent.Name;
                 student.Birthday = updateStudent.Birthday;
-                student.Age = updateStudent.Age;
 
                 db.SaveChanges();
 
