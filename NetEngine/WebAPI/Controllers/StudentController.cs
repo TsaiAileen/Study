@@ -27,6 +27,7 @@ namespace WebAPI.Controllers
     /// 系统访问授权模块
     /// </summary>
     [Route("[controller]/[action]")]
+    [Authorize]
     [ApiController]
     public class StudentController : ControllerBase
     {
@@ -43,8 +44,18 @@ namespace WebAPI.Controllers
         }
 
         [HttpGet]
+        [AllowAnonymous]
         public DtoPageList<DtoStudent> GetStudentList(int pageNum, int pageSize)
         {
+            var user = db.TUser.First();
+
+            string password = "123456";
+            var idBytes = Encoding.UTF8.GetBytes(user.Id.ToString());
+            var dbPasswordBytes = KeyDerivation.Pbkdf2(password, idBytes, KeyDerivationPrf.HMACSHA256, 1000, 32);
+            var dbPassword = Convert.ToBase64String(dbPasswordBytes);
+            user.PassWord = dbPassword;
+            db.SaveChanges();
+
             DtoPageList<DtoStudent> retList = new();
 
             int skip = (pageNum - 1) * pageSize;

@@ -1,4 +1,7 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using System.Text;
+using Common;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Cryptography.KeyDerivation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Distributed;
 using Repository.Database;
@@ -29,11 +32,17 @@ namespace WebAPI.Controllers
         private readonly long userId;
 
 
+        private readonly IDHelper idHelper;
 
-        public UserController(DatabaseContext db, IDistributedCache distributedCache, IHttpContextAccessor httpContextAccessor)
+
+
+
+        public UserController(DatabaseContext db, IDistributedCache distributedCache, IHttpContextAccessor httpContextAccessor, IDHelper idHelper)
         {
             this.db = db;
             this.distributedCache = distributedCache;
+            this.idHelper = idHelper;
+
 
             var userIdStr = httpContextAccessor.HttpContext?.GetClaimByUser("userId");
             if (userIdStr != null)
@@ -41,7 +50,6 @@ namespace WebAPI.Controllers
                 userId = long.Parse(userIdStr);
             }
         }
-
 
 
 
@@ -127,6 +135,33 @@ namespace WebAPI.Controllers
             }
         }
 
+        /// <summary>
+        /// Create User
+        /// </summary>
+        [HttpPost]
+        public long CreateUser(DtoCreateUser createUser)
+        {
+            TUser user = new();
+            user.Id = idHelper.GetId();
+            user.Name = createUser.Name;
+            user.UserName = createUser.UserName;
+            user.Phone = createUser.Phone;
+            user.Email = createUser.Email;
+
+
+            string password = createUser.PassWord;
+
+            var idBytes = Encoding.UTF8.GetBytes(user.Id.ToString());
+            var dbPasswordBytes = KeyDerivation.Pbkdf2(password, idBytes, KeyDerivationPrf.HMACSHA256, 1000, 32);
+            var dbPassword = Convert.ToBase64String(dbPasswordBytes);
+
+            user.PassWord = dbPassword;
+
+            db.TUser.Add(user);
+            db.SaveChanges();
+
+            return user.Id;
+        }
 
     }
 }

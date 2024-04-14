@@ -25,9 +25,14 @@ using WebAPI.Models.AppSetting;
 namespace WebAPI
 {
     public class Program
+
     {
         public static void Main(string[] args)
         {
+
+            var keyInfo = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+            var privateKey = Convert.ToBase64String(keyInfo.ExportECPrivateKey());
+            var publicKey = Convert.ToBase64String(keyInfo.ExportSubjectPublicKeyInfo());
 
             ThreadPool.SetMinThreads(128, 1);
 
