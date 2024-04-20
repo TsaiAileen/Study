@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using Common;
+using DistributedLock;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Cryptography.KeyDerivation;
 using Microsoft.AspNetCore.Mvc;
@@ -26,6 +27,8 @@ namespace WebAPI.Controllers
 
         private readonly DatabaseContext db;
 
+        private readonly IDistributedLock distLock;
+
         private readonly IDistributedCache distributedCache;
 
 
@@ -37,11 +40,12 @@ namespace WebAPI.Controllers
 
 
 
-        public UserController(DatabaseContext db, IDistributedCache distributedCache, IHttpContextAccessor httpContextAccessor, IDHelper idHelper)
+        public UserController(DatabaseContext db, IDistributedCache distributedCache, IHttpContextAccessor httpContextAccessor, IDHelper idHelper, IDistributedLock distLock)
         {
             this.db = db;
             this.distributedCache = distributedCache;
             this.idHelper = idHelper;
+            this.distLock = distLock;
 
 
             var userIdStr = httpContextAccessor.HttpContext?.GetClaimByUser("userId");
@@ -85,6 +89,7 @@ namespace WebAPI.Controllers
         /// </summary>
         /// <param name="keyValue">key 为新手机号，value 为短信验证码</param>
         /// <returns></returns>
+        [QueueLimitFilter(Expiry = 30, IsBlock = true, IsUseParameter = true, IsUseToken = true)]
         [HttpPost]
         public bool EditUserPhoneBySms([FromBody] DtoKeyValue keyValue)
         {
@@ -139,28 +144,48 @@ namespace WebAPI.Controllers
         /// Create User
         /// </summary>
         [HttpPost]
-        public long CreateUser(DtoCreateUser createUser)
+        public long? CreateUser(DtoCreateUser createUser)
         {
-            TUser user = new();
-            user.Id = idHelper.GetId();
-            user.Name = createUser.Name;
-            user.UserName = createUser.UserName;
-            user.Phone = createUser.Phone;
-            user.Email = createUser.Email;
 
+            string key = "useName: " + createUser.UserName.ToLower();
 
-            string password = createUser.PassWord;
+            using (var handle = distLock.TryLock(key))
+            {
+                if (handle != null)
+                {
+                    var isHaveUserName = db.TUser.Where(t => t.UserName.ToLower() == createUser.UserName.ToLower()).Any();
 
-            var idBytes = Encoding.UTF8.GetBytes(user.Id.ToString());
-            var dbPasswordBytes = KeyDerivation.Pbkdf2(password, idBytes, KeyDerivationPrf.HMACSHA256, 1000, 32);
-            var dbPassword = Convert.ToBase64String(dbPasswordBytes);
+                    if (isHaveUserName == false)
+                    {
 
-            user.PassWord = dbPassword;
+                        TUser user = new()
+                        {
+                            Id = idHelper.GetId(),
+                            Name = createUser.Name,
+                            UserName = createUser.UserName,
+                            Phone = createUser.Phone,
+                            Email = createUser.Email
+                        };
 
-            db.TUser.Add(user);
-            db.SaveChanges();
+                        // Hash the password
+                        string password = createUser.PassWord;
+                        var idBytes = Encoding.UTF8.GetBytes(user.Id.ToString());
+                        var dbPasswordBytes = KeyDerivation.Pbkdf2(password, idBytes, KeyDerivationPrf.HMACSHA256, 1000, 32);
+                        var dbPassword = Convert.ToBase64String(dbPasswordBytes);
+                        user.PassWord = dbPassword;
 
-            return user.Id;
+                        // Add the new user to the database
+                        db.TUser.Add(user);
+                        db.SaveChanges();
+
+                        return user.Id;
+                    }
+                }
+
+            }
+
+            return null;
+
         }
 
     }
