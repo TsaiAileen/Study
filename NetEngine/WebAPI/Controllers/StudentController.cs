@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Cryptography.KeyDerivation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using Repository.Database;
@@ -81,6 +82,22 @@ namespace WebAPI.Controllers
             }
 
             return retList;
+        }
+
+        [HttpGet]
+        [AllowAnonymous]
+        public FileResult ExportStudentList()
+        {
+            var students = db.TStudent.Select(t => new DtoExportStudent
+            {
+                Id = t.Id,
+                Name = t.Name,
+                Birthday = t.Birthday
+            }).ToList();
+            var fileBytes = DataHelper.ListToExcel(students);
+            FileExtensionContentTypeProvider provider = new();
+            var memi = provider.Mappings.TryGetValue(".xlsx", out string? value)!;
+            return File(fileBytes, value!, "Test" + DateTime.Now.ToString("yyyyMMddHHmmss"));
         }
 
         [HttpGet]
