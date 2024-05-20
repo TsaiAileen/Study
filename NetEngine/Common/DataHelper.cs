@@ -335,9 +335,6 @@ namespace Common
                                     IRow row = sheet.GetRow(i);
                                     if (row == null || row.Cells.Count == 0) continue;
 
-                                    //跳过空行(所有列都为空的 视为空行)
-                                    if (!row.Cells.Any(it => !string.IsNullOrWhiteSpace(it.StringCellValue))) continue;
-
                                     DataRow dataRow = dataTable.NewRow();
                                     for (int j = row.FirstCellNum; j < cellCount; ++j)
                                     {
@@ -379,8 +376,10 @@ namespace Common
                 }
                 return dataTable;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+
+                Console.WriteLine(ex.Message);
                 return null;
             }
         }

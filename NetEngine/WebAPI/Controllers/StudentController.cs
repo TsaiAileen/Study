@@ -100,6 +100,46 @@ namespace WebAPI.Controllers
             return File(fileBytes, value!, "Test" + DateTime.Now.ToString("yyyyMMddHHmmss"));
         }
 
+        [HttpPost]
+        [AllowAnonymous]
+        public bool ImportStudentList(IFormFile file, [FromServices] IWebHostEnvironment webHostEnvironment)
+        {
+            var rootPath = webHostEnvironment.ContentRootPath;
+            string basePath = Path.Combine("files", "temp");
+            string folderPath = Path.Combine(rootPath, basePath);
+
+            if (!Directory.Exists(folderPath))
+            {
+                Directory.CreateDirectory(folderPath);
+            }
+
+            var fileName = idHelper.GetId() + Path.GetExtension(file.FileName).ToLower();
+
+            var filePath = Path.Combine(folderPath, fileName);
+
+            if (file.Length > 0)
+            {
+                using (FileStream fs = System.IO.File.Create(filePath))
+                {
+                    file.CopyTo(fs);
+                    fs.Flush();
+                }
+
+
+                var dataTable = DataHelper.ExcelToDataTable(filePath, true);
+
+
+                if (dataTable is not null)
+                {
+                    var dataList = DataHelper.DataTableToList<DtoImportStudentFile>(dataTable);
+                    Console.WriteLine(123456);
+                }
+
+            }
+
+            return false;
+        }
+
         [HttpGet]
         public DtoStudent? GetStudent(long id)
         {
